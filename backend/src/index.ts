@@ -221,13 +221,38 @@ app.get('/api/employees', (req, res) => {
 app.post('/api/employees', (req, res) => {
     const data = keysToSnake(req.body);
     const { id, name, email, role, phone, salary, join_date, status } = data;
+    
+    // Validate required fields
+    const missing = validateRequired(data, ['id', 'name', 'email', 'role']);
+    if (missing) {
+        return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
+    }
+    
     try {
-        db.prepare('INSERT INTO employees (id, name, email, role, phone, salary, join_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-            .run(id, name, email, role, phone, salary, join_date, status || 'Active');
-        res.json(req.body);
-    } catch (error) {
+        const insertEmployee = db.prepare('INSERT INTO employees (id, name, email, role, phone, salary, join_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertUser = db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)');
+        
+        // Use transaction to ensure both employee and user are created together
+        const transaction = db.transaction(() => {
+            // Create employee record
+            insertEmployee.run(id, name, email, role, phone, salary || 0, join_date, status || 'Active');
+            
+            // Create user account with default password "emp123"
+            // Check if user already exists
+            const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+            if (!existingUser) {
+                insertUser.run(id, name, email, 'emp123', 'employee');
+                console.log(`Created user account for employee: ${email} with password: emp123`);
+            } else {
+                console.log(`User account already exists for: ${email}`);
+            }
+        });
+        
+        transaction();
+        res.json({ ...req.body, message: 'Employee and user account created successfully' });
+    } catch (error: any) {
         console.error('Error adding employee:', error);
-        res.status(500).json({ error: 'Failed to add employee' });
+        res.status(500).json({ error: `Failed to add employee: ${error.message}` });
     }
 });
 
@@ -235,16 +260,37 @@ app.put('/api/employees/:id', (req, res) => {
     const data = keysToSnake(req.body);
     const { name, email, role, phone, salary, join_date, status } = data;
     const { id } = req.params;
+    
     try {
-        db.prepare(`UPDATE employees SET 
+        const updateEmployee = db.prepare(`UPDATE employees SET 
             name = ?, email = ?, role = ?, phone = ?, 
             salary = ?, join_date = ?, status = ? 
-            WHERE id = ?`)
-            .run(name, email, role, phone, salary, join_date, status, id);
-        res.json(req.body);
-    } catch (error) {
+            WHERE id = ?`);
+        
+        const updateUser = db.prepare(`UPDATE users SET 
+            name = ?, email = ? 
+            WHERE id = ?`);
+        
+        // Use transaction to ensure both employee and user are updated together
+        const transaction = db.transaction(() => {
+            // Update employee record
+            updateEmployee.run(name, email, role, phone, salary, join_date, status, id);
+            
+            // Update user account if it exists
+            const existingUser = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
+            if (existingUser) {
+                updateUser.run(name, email, id);
+                console.log(`Updated user account for employee: ${email}`);
+            } else {
+                console.log(`No user account found for employee ID: ${id}`);
+            }
+        });
+        
+        transaction();
+        res.json({ ...req.body, message: 'Employee updated successfully' });
+    } catch (error: any) {
         console.error('Error updating employee:', error);
-        res.status(500).json({ error: 'Failed to update employee' });
+        res.status(500).json({ error: `Failed to update employee: ${error.message}` });
     }
 });
 

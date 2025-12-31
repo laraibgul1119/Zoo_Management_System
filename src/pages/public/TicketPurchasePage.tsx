@@ -26,6 +26,7 @@ export function TicketPurchasePage() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [completedOrderTotal, setCompletedOrderTotal] = useState(0);
 
   useEffect(() => {
     fetchTickets();
@@ -78,6 +79,8 @@ export function TicketPurchasePage() {
       const date = new Date().toISOString().split('T')[0];
 
       console.log('Starting order submission...');
+      console.log('Current cart:', cart);
+      console.log('Total amount:', totalAmount);
 
       // Create a sale for each ticket type in the cart
       const salePromises = Object.entries(cart)
@@ -87,7 +90,7 @@ export function TicketPurchasePage() {
           if (!ticket) throw new Error(`Ticket ${ticketId} not found`);
 
           const saleData = {
-            ticketId: ticketId, // Ensure API expects camelCase or handles it
+            ticketId: ticketId,
             quantity: qty,
             totalAmount: ticket.price * qty,
             date: date,
@@ -102,18 +105,21 @@ export function TicketPurchasePage() {
 
       const results = await Promise.all(salePromises);
       console.log('Sale results:', results);
+      console.log('All sales completed successfully!');
 
-      setIsProcessing(false);
+      // Save the total before clearing cart
+      setCompletedOrderTotal(totalAmount);
+      
+      // Set order complete FIRST, then clear cart
       setOrderComplete(true);
-      setCart({});
-
-      // Auto close after 5 seconds if successful
-      // setTimeout(() => {
-      //   if (showCheckout) {
-      //      closeCheckout();
-      //   }
-      // }, 5000);
-      // Let user close it manually to see the success message better.
+      setIsProcessing(false);
+      
+      console.log('Order complete state set to true');
+      
+      // Clear cart after a small delay to ensure state updates
+      setTimeout(() => {
+        setCart({});
+      }, 100);
 
     } catch (error: any) {
       console.error('Error processing order:', error);
@@ -125,6 +131,7 @@ export function TicketPurchasePage() {
   const closeCheckout = () => {
     setShowCheckout(false);
     setOrderComplete(false);
+    setCompletedOrderTotal(0);
     setCheckoutData({
       firstName: '',
       lastName: '',
@@ -249,10 +256,13 @@ export function TicketPurchasePage() {
           <p className="text-gray-600 font-medium mb-4">
             Your tickets have been purchased successfully. You will receive a confirmation email shortly.
           </p>
-          <div className="bg-[#FBBF24] p-4 border-2 border-black">
-            <p className="font-black">Order Total: ${totalAmount}</p>
+          <div className="bg-[#FBBF24] p-4 border-2 border-black mb-6">
+            <p className="font-black">Order Total: ${completedOrderTotal.toFixed(2)}</p>
             <p className="text-sm font-bold">Confirmation #: ZOO-{Date.now()}</p>
           </div>
+          <Button onClick={closeCheckout} className="w-full">
+            Close
+          </Button>
         </div>
       ) : (
         <>

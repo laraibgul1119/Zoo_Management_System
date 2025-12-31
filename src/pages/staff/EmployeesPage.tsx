@@ -21,7 +21,7 @@ export function EmployeesPage() {
     email: '',
     phone: '',
     joinDate: '',
-    status: 'Active' as 'Active' | 'Inactive'
+    status: 'Active' as 'Active' | 'Inactive' | 'Pending'
   });
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -97,7 +97,10 @@ export function EmployeesPage() {
           id: `emp-${Date.now()}`
         };
         await api.createEmployee(newEmployee);
-        setMessage({ type: 'success', text: 'Employee added successfully!' });
+        setMessage({ 
+          type: 'success', 
+          text: `Employee added successfully! Login credentials - Email: ${formData.email}, Password: emp123` 
+        });
       }
       fetchEmployees();
       setShowCreateModal(false);
@@ -106,7 +109,7 @@ export function EmployeesPage() {
       setMessage({ type: 'error', text: 'Failed to save employee' });
     }
 
-    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    setTimeout(() => setMessage({ type: '', text: '' }), 5000);
   };
 
   const handleApproveEmployee = async (employee: Employee) => {
@@ -274,6 +277,20 @@ export function EmployeesPage() {
             { value: 'Inactive', label: 'Inactive' }
           ]}
         />
+
+        {!editingEmployee && (
+          <div className="bg-blue-50 border-2 border-blue-500 p-4 rounded">
+            <p className="text-sm font-bold text-blue-800">
+              ℹ️ A user account will be automatically created with:
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              • Email: {formData.email || '(enter email above)'}
+            </p>
+            <p className="text-sm text-blue-700">
+              • Password: <span className="font-bold">emp123</span>
+            </p>
+          </div>
+        )}
 
         <button
           type="submit"

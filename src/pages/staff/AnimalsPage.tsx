@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -28,7 +28,7 @@ export function AnimalsPage() {
   });
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchData();
   }, []);
 
